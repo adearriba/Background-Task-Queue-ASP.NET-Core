@@ -7,22 +7,30 @@ namespace BackgroundServices.ChannelQueue
 {
     public class ChannelTaskQueue : IBackgroundTaskQueue
     {
-        private readonly Channel<IScopedBackgroundTask> _queue;
+        protected readonly Channel<IScopedBackgroundTask> _queue;
 
-        public ChannelTaskQueue(int? capacity)
+        public ChannelTaskQueue()
         {
-            if (capacity is null)
+            _queue = Channel.CreateUnbounded<IScopedBackgroundTask>();
+        }
+
+        public ChannelTaskQueue(int capacity)
+        {
+            var options = new BoundedChannelOptions(capacity)
             {
-                _queue = Channel.CreateUnbounded<IScopedBackgroundTask>();
-            }
-            else
+                FullMode = BoundedChannelFullMode.Wait
+            };
+            _queue = Channel.CreateBounded<IScopedBackgroundTask>(options);
+        }
+
+        public int Count()
+        {
+            if(_queue.Reader.CanCount)
             {
-                var options = new BoundedChannelOptions(capacity.Value)
-                {
-                    FullMode = BoundedChannelFullMode.Wait
-                };
-                _queue = Channel.CreateBounded<IScopedBackgroundTask>(options);
+                return _queue.Reader.Count;
             }
+
+            return 0;
         }
 
         public async ValueTask<IScopedBackgroundTask> DequeueTaskAsync(CancellationToken cancellationToken)

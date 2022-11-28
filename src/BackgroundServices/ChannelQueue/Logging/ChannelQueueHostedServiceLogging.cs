@@ -8,12 +8,13 @@ namespace BackgroundServices.ChannelQueue.Logging
         internal static class EventIds
         {
             public static readonly EventId ServiceStarting = new EventId(100, "ServiceStarting");
-            public static readonly EventId ServiceEnd = new EventId(100, "ServiceEnd");
+            public static readonly EventId ServiceEnd = new EventId(101, "ServiceEnd");
 
             public static readonly EventId TaskDequeue = new EventId(201, "TaskDequeue");
             public static readonly EventId TaskStarting = new EventId(202, "TaskStarting");
             public static readonly EventId TaskEnd = new EventId(203, "TaskEnd");
             public static readonly EventId TaskError = new EventId(204, "TaskError");
+            public static readonly EventId TaskQueueCleaned = new EventId(204, "TaskQueueCleaned");
         }
 
         private static readonly Action<ILogger, string, Exception> _taskDequeue = LoggerMessage.Define<string>(
@@ -74,6 +75,16 @@ namespace BackgroundServices.ChannelQueue.Logging
         public static void ServiceEnd(this ILogger logger, string name)
         {
             _serviceEnd(logger, name, null);
+        }
+
+        private static readonly Action<ILogger, string, Exception> _taskQueueCleaned = LoggerMessage.Define<string>(
+                LogLevel.Trace,
+                EventIds.TaskQueueCleaned,
+                "Background Service {backgroundServiceName} task queue has been cleaned...");
+
+        public static void TaskQueueCleaned(this ILogger logger, string name)
+        {
+            _taskQueueCleaned(logger, name, null);
         }
     }
 }

@@ -11,12 +11,13 @@ namespace BackgroundServices.ChannelQueue
     public class ChannelQueueHostedService : BackgroundService
     {
         private readonly ILogger<ChannelQueueHostedService> _logger;
-        private ChannelTaskQueue _queue;
+        private IBackgroundTaskQueue _queue;
+        private bool _isCleaning = false;
 
         public IServiceProvider Services { get; }
 
-        public ChannelQueueHostedService(IServiceProvider services, 
-            ChannelTaskQueue queue, ILogger<ChannelQueueHostedService> logger)
+        public ChannelQueueHostedService(IServiceProvider services,
+            IBackgroundTaskQueue queue, ILogger<ChannelQueueHostedService> logger)
         {
             Services = services;
             _queue = queue;
@@ -25,14 +26,16 @@ namespace BackgroundServices.ChannelQueue
 
         protected override async Task ExecuteAsync(CancellationToken cancellationToken)
         {
-            _logger?.ServiceStarting(nameof(ChannelQueueHostedService));
+            _logger?.ServiceStarting(this.GetType().Name);
             await BackgroundProcessing(cancellationToken);
         }
 
-        private async Task BackgroundProcessing(CancellationToken cancellationToken)
+        protected async Task BackgroundProcessing(CancellationToken cancellationToken)
         {
             while (!cancellationToken.IsCancellationRequested)
             {
+                if (_isCleaning) await CleanQueue(cancellationToken);
+
                 var currentTask = await _queue.DequeueTaskAsync(cancellationToken);
                 _logger?.TaskDequeue(currentTask);
                 try
@@ -53,8 +56,24 @@ namespace BackgroundServices.ChannelQueue
 
         public override async Task StopAsync(CancellationToken stoppingToken)
         {
-            _logger?.ServiceEnd(nameof(ChannelQueueHostedService));
+            _logger?.ServiceEnd(this.GetType().Name);
             await base.StopAsync(stoppingToken);
+        }
+
+        private async Task CleanQueue(CancellationToken cancellationToken)
+        {
+            while(_queue.Count() > 0)
+            {
+                await _queue.DequeueTaskAsync(cancellationToken);
+            }
+
+            _logger?.TaskQueueCleaned(this.GetType().Name);
+            _isCleaning = false;
+        }
+
+        public void StartCleaning()
+        {
+            _isCleaning = true;
         }
     }
 }

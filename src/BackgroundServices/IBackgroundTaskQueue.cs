@@ -9,5 +9,7 @@ namespace BackgroundServices
         ValueTask QueueTaskAsync(IScopedBackgroundTask workItem);
 
         ValueTask<IScopedBackgroundTask> DequeueTaskAsync(CancellationToken cancellationToken);
+
+        int Count();
     }
 }
